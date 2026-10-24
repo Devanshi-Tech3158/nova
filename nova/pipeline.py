@@ -4,10 +4,11 @@ import logging
 from typing import Any
 
 from nova.core.protocols import Extractor, MemoryStore, Retriever
-from nova.core.schemas import IngestReport, Message
+from nova.core.schemas import Decision, IngestReport, Message
 from nova.extraction.quote_validator import validate_quotes
 from nova.retrieval.embedder import serialize_embedding
 from nova.temporal.supersession import apply as apply_supersession
+from nova.verification.service import AnchorVerifier
 
 logger = logging.getLogger("nova.pipeline")
 
@@ -21,6 +22,7 @@ class Anchor:
         extractor: Extractor,
         retriever: Retriever,
         audit_log: Any = None,
+        verifier: Any = None,
     ) -> None:
         """Initialize Anchor with underlying store, extractor, and retriever."""
         self.store = store
@@ -28,6 +30,11 @@ class Anchor:
         self.retriever = retriever
         self.audit_log = audit_log
         self._ingested_msg_ids: set[str] = set()
+        self.verifier = verifier or AnchorVerifier(
+            retriever=retriever,
+            audit=audit_log,
+            llm=getattr(extractor, "llm", None),
+        )
 
     def ingest(self, session_id: str, messages: list[Message]) -> IngestReport:
         """Extract, validate, store, supersede, and embed memories from conversation turns."""
@@ -97,13 +104,13 @@ class Anchor:
         )
         return report
 
-    def ask(self, question: str, draft_answer: str | None = None) -> Any:
-        """Answer question from verified memories (stub for Person 2)."""
-        raise NotImplementedError("ask() will be implemented by Person 2")
+    def ask(self, question: str, draft_answer: str | None = None) -> Decision:
+        """Answer question from verified memories using verification service."""
+        return self.verifier.ask(question, draft_answer)
 
-    def verify(self, question: str, answer: str) -> Any:
-        """Verify an answer against retrieved memories (stub for Person 2)."""
-        raise NotImplementedError("verify() will be implemented by Person 2")
+    def verify(self, question: str, answer: str) -> Decision:
+        """Verify an answer against retrieved memories using verification service."""
+        return self.verifier.verify(question, answer)
 
     def get_audit(self, audit_id: str) -> Any:
         """Retrieve audit record by id."""

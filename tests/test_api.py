@@ -108,8 +108,11 @@ def test_ask_and_verify_endpoints(tmp_path: Path) -> None:
 
 
 def test_ask_not_implemented_maps_to_501(tmp_path: Path) -> None:
-    """Verify default stubbed ask raises NotImplementedError and returns clean 501."""
+    """Verify stubbed or unimplemented ask raises NotImplementedError and returns clean 501."""
     anchor, _ = _setup_test_anchor(tmp_path)
+    anchor.ask = lambda *a, **k: (_ for _ in ()).throw(
+        NotImplementedError("Feature not implemented")
+    )  # type: ignore[assignment]
     app.dependency_overrides[get_anchor] = lambda: anchor
 
     client = TestClient(app)

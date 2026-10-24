@@ -4,8 +4,6 @@ import json
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
-import pytest
-
 from nova.core.llm import FakeLLM
 from nova.core.schemas import MemoryStatus, Message
 from nova.extraction.extractor import LLMExtractor
@@ -91,11 +89,5 @@ def test_anchor_ingest_and_retrieval_integration(tmp_path: Path) -> None:
     re_report = anchor.ingest("sess-prod", [msg1, msg2, msg3])
     assert re_report.added == 0
     assert re_report.superseded == 0
-
-    with pytest.raises(NotImplementedError):
-        anchor.ask("which database?")
-
-    with pytest.raises(NotImplementedError):
-        anchor.verify("which database?", "PostgreSQL")
 
     store.close()
