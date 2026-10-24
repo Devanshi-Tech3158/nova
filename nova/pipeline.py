@@ -20,11 +20,13 @@ class Anchor:
         store: MemoryStore,
         extractor: Extractor,
         retriever: Retriever,
+        audit_log: Any = None,
     ) -> None:
         """Initialize Anchor with underlying store, extractor, and retriever."""
         self.store = store
         self.extractor = extractor
         self.retriever = retriever
+        self.audit_log = audit_log
         self._ingested_msg_ids: set[str] = set()
 
     def ingest(self, session_id: str, messages: list[Message]) -> IngestReport:
@@ -102,3 +104,9 @@ class Anchor:
     def verify(self, question: str, answer: str) -> Any:
         """Verify an answer against retrieved memories (stub for Person 2)."""
         raise NotImplementedError("verify() will be implemented by Person 2")
+
+    def get_audit(self, audit_id: str) -> Any:
+        """Retrieve audit record by id."""
+        if self.audit_log is not None:
+            return self.audit_log.get(audit_id)
+        return None
