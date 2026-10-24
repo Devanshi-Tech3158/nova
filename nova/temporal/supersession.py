@@ -1,5 +1,7 @@
 """Temporal supersession logic for memories."""
 
+from datetime import datetime
+
 from nova.core.protocols import MemoryStore
 from nova.core.schemas import Memory, MemoryStatus, MemoryType
 
@@ -44,6 +46,17 @@ def _apply_internal(store: MemoryStore, new_memories: list[Memory]) -> int:
     for mem in sorted_memories:
         existing = store.get(mem.id)
         if existing is not None:
+            if mem.type in SUPERSEDABLE_TYPES and hasattr(store, "conn") and store.conn is not None:
+                cur = store.conn.cursor()
+                rows = cur.execute(
+                    "SELECT id, timestamp, type FROM memories WHERE subject = ? AND status = 'current' AND id != ?;",
+                    (mem.subject, mem.id),
+                ).fetchall()
+                for r in rows:
+                    r_ts = datetime.fromisoformat(r["timestamp"])
+                    if r["type"] in [t.value for t in SUPERSEDABLE_TYPES] and mem.timestamp > r_ts:
+                        store.supersede(r["id"], mem.id)
+                        superseded_count += 1
             continue
 
         if mem.type not in SUPERSEDABLE_TYPES:
